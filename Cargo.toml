@@ -1,0 +1,22 @@
+[package]
+name = "drift-account-indexer"
+version = "0.1.0"
+edition = "2021"
+authors = ["jordy25519"]
+
+[[bin]]
+name = "indexer"
+path = "src/main.rs"
+
+[workspace]
+members = ["src/indexer", "src/idl-gen"]
+
+[dependencies]
+clap = { version = "*", features = ["derive"] }
+env_logger = "0.10.0"
+futures-util = "*"
+log = "*"
+tokio = { version = "*", features = ["full"] }
+
+drift-indexer-backend = { path = "src/indexer" }
+idl-gen = { path = "src/idl-gen" }

@@ -1,0 +1,14 @@
+[package]
+name = "idl-gen"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+anchor-syn = { version = "*", features = ["idl"] }
+proc-macro2 = "*"
+quote = "*"
+serde_json = "*"
+syn = "*"

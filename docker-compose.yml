@@ -1,0 +1,24 @@
+version: '3'
+services:
+  indexer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: indexer:latest
+    container_name: indexer
+    restart: always
+    entrypoint: indexer --accounts GontTwDeBduvbW85oHyC8A7GekuT8X1NkZHDDdUWWvsV --poll 10 --rpc https://rpc.helius.xyz/?api-key=9cdcda7b-ff1f-473c-9067-92f52b58e81a
+    environment:
+      RUST_LOG: debug
+      INDEXER_DB_CONN_STR: mongodb://service:password@mongo:27017/drift
+  mongo:
+    image: mongo
+    restart: always
+    command: --quiet # mongo container very noisy on start up
+    ports:
+      - 27017:27017
+    volumes:
+     - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
