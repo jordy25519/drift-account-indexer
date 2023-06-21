@@ -20,4 +20,5 @@ tokio = { version = "*", features = ["full"] }
 idl-gen = { path = "../idl-gen" }
 
 [dev-dependencies]
+env_logger ="*"
 serde_json = "*"

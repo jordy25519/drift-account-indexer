@@ -9,12 +9,12 @@ services:
     restart: always
     entrypoint: indexer --accounts GontTwDeBduvbW85oHyC8A7GekuT8X1NkZHDDdUWWvsV --poll 10 --rpc https://rpc.helius.xyz/?api-key=9cdcda7b-ff1f-473c-9067-92f52b58e81a
     environment:
-      RUST_LOG: debug
+      RUST_LOG: info
       INDEXER_DB_CONN_STR: mongodb://service:password@mongo:27017/drift
   mongo:
     image: mongo
     restart: always
-    command: --quiet # mongo container very noisy on start up
+    command: --quiet # TODO: mongo container very noisy on start up...
     ports:
       - 27017:27017
     volumes:

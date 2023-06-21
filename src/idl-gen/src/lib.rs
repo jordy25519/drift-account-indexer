@@ -22,9 +22,22 @@ pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         output.extend(vec![type_struct]);
     });
 
+    let mut outer_event_types = TokenStream::new();
+    let mut outer_event_impl = TokenStream::new();
     if let Some(events) = idef.events {
-        events.iter().for_each(|e| {
-            let event_struct = gen_event_struct(e);
+        events.iter().for_each(|event| {
+            let event_name = syn::Ident::new(event.name.as_str(), Span::call_site());
+            // event_names.push(event_name);
+            outer_event_types = quote! {
+                #outer_event_types
+                #event_name(#event_name),
+            };
+            outer_event_impl = quote! {
+                #outer_event_impl
+                #event_name::DISCRIMINATOR => Self::#event_name(AnchorDeserialize::deserialize(data).ok()?),
+            };
+
+            let event_struct = gen_event_struct(event);
             output = quote! {
                 #output
                 #event_struct
@@ -32,7 +45,34 @@ pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         });
     }
 
-    output.into()
+    let program_event_name = syn::Ident::new(
+        format!(
+            "{}{}Event",
+            (idef.name[..1].to_string()).to_uppercase(),
+            &idef.name[1..]
+        )
+        .as_str(),
+        Span::call_site(),
+    );
+    quote! {
+        #output
+
+        #[derive(Debug, PartialEq)]
+        pub enum #program_event_name {
+            #outer_event_types
+        }
+
+        impl #program_event_name {
+            fn from_discriminant(disc: [u8; 8], data: &mut &[u8]) -> Option<Self> {
+                let event = match disc {
+                    #outer_event_impl
+                    _ => return None,
+                };
+                Some(event)
+            }
+        }
+    }
+    .into()
 }
 
 fn gen_event_struct(event: &IdlEvent) -> TokenStream {

@@ -120,17 +120,22 @@ impl<T: IndexerBackend> DriftEventIndexer<T> {
         if let Some(ref meta) = tx_data.transaction.meta {
             if let OptionSerializer::Some(ref logs) = meta.log_messages {
                 for log in logs {
-                    // TODO: this is a quick hack, map to strut using discriminant
-                    if let Ok(Some(record)) = handle_log::<OrderActionRecord>(log.as_str()) {
-                        info!(
-                            "indexing OrderActionRecord maker={:?}, taker={:?}",
-                            record.maker, record.taker
-                        );
-                        self.db.insert_order_action_record(record).await?;
-                    }
-                    if let Ok(Some(record)) = handle_log::<OrderRecord>(log.as_str()) {
-                        info!("indexing OrderRecord: {:?}", record.user);
-                        self.db.insert_order_record(record).await?;
+                    match try_parse_log(log.as_str()) {
+                        Ok(Some(DriftEvent::OrderActionRecord(record))) => {
+                            info!(
+                                "indexing OrderActionRecord maker={:?}, taker={:?}",
+                                record.maker, record.taker
+                            );
+                            self.db.insert_order_action_record(record).await?;
+                        }
+                        Ok(Some(DriftEvent::OrderRecord(record))) => {
+                            info!("indexing OrderRecord: {:?}", record.user);
+                            self.db.insert_order_record(record).await?;
+                        }
+                        Ok(Some(unhandled_event)) => {
+                            info!("got unhandled event: {:?}", unhandled_event);
+                        }
+                        Ok(None) | Err(LogError::InvalidBase64) => (), // this is harmless, indicates log is not an IDL typed event
                     }
                 }
             }
@@ -161,8 +166,15 @@ mod test {
         VersionedTransactionWithStatusMeta,
     };
 
+    /// Enable logger crate in test
+    fn enable_logs() {
+        env_logger::init();
+    }
+
     #[tokio::test]
     async fn index_account() {
+        enable_logs();
+
         let get_signature_for_address_response: Vec<RpcConfirmedTransactionStatusWithSignature> = vec![
             RpcConfirmedTransactionStatusWithSignature {
                 signature: "3gvGQufckXGHrFDv4dNWEXuXKRMy3NZkKHMyFrAhLoYScaXXTGCp9vq58kWkfyJ8oDYZrz4bTyGayjUy9PKigeLS".to_string(),

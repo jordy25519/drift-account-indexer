@@ -1,7 +1,23 @@
 # drift-indexer
 
-Watches solana for drift account events and stores them.   
+Monitor solana for Drift account events and persist them into storage.   
 
+```console
+$> ./indexer --help
+
+Drift account indexing service 🏎️
+
+Usage: indexer [OPTIONS]
+
+Options:
+      --accounts <ACCOUNTS>  List of accounts to monitor
+      --db <DB>              Db connection string
+      --rpc <RPC>            Solana RPC endpoint
+      --poll <POLL>          Polling interval (seconds) [default: 3]
+  -h, --help                 Print help
+```
+
+## Usage
 ```console
 $> indexer \
     --accounts BTDXiRzG1QBP7bfK4A33RcSP5mmZx8mGJ9YC5maetoD6,GontTwDeBduvbW85oHyC8A7GekuT8X1NkZHDDdUWWvsV 
@@ -14,15 +30,3 @@ $> indexer \
 ```console
 docker-compose up --build
 ```
-
-## TODO:
-- [x] figure out DB schema and writing
-- [x] add cli flags/args
-    - [x] --accounts=<address1>,<address2>
-- [x] create `Dockerfile` + `docker-compose` file for testing
-- [x] store last processed signature
-- [] write a note about the DB code, not quite right
-
-out of scope
-- [] handle all event drift event types e.g. with strategy/visitor pattern
-- [ ] check drift program version at start up

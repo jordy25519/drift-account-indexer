@@ -4,9 +4,9 @@ use std::sync::{Mutex, MutexGuard};
 use async_trait::async_trait;
 use log::debug;
 use mongodb::{
-    bson::{doc, spec::BinarySubtype, Binary},
+    bson::{doc, Bson},
     options::{CreateIndexOptions, FindOneAndUpdateOptions, IndexOptions},
-    Client, Collection, IndexModel,
+    Client, Database, IndexModel,
 };
 use serde::{Deserialize, Serialize};
 use solana_sdk::{pubkey::Pubkey, signature::Signature};
@@ -19,6 +19,8 @@ const DB_DATABASE_NAME: &str = "drift";
 pub enum DbError {
     /// Failure during insert
     Insert(String),
+    /// Failure during read
+    Read(String),
 }
 
 /// Indexer backend API
@@ -41,13 +43,9 @@ pub trait IndexerBackend: Send + Sync {
 }
 
 /// MongoDb indexer database client
-#[derive(Clone)]
 pub struct MongoDbClient {
-    inner: Client,
-    // TODO: mapping record/collection to a field seems like an anti-pattern
-    accounts: Collection<Account>,
-    order_records: Collection<OrderRecord>,
-    order_action_records: Collection<OrderActionRecord>,
+    _inner: Client,
+    db: Database,
 }
 
 impl MongoDbClient {
@@ -67,12 +65,7 @@ impl MongoDbClient {
             .await
             .expect("index created");
 
-        Self {
-            accounts: db.collection("accounts"),
-            order_records: db.collection("order_records"),
-            order_action_records: db.collection("order_action_records"),
-            inner: client,
-        }
+        Self { db, _inner: client }
     }
 }
 
@@ -82,16 +75,20 @@ impl IndexerBackend for MongoDbClient {
         MongoDbClient::new(conn_str).await
     }
     async fn last_indexed_signature(&self, account: &Pubkey) -> Result<Option<Signature>, DbError> {
-        let address_bytes = Binary {
-            subtype: BinarySubtype::Generic,
-            bytes: account.to_bytes().to_vec(),
-        };
+        let address_bytes = Bson::Array(
+            account
+                .to_bytes()
+                .iter()
+                .map(|d| Bson::Int32(*d as i32))
+                .collect(),
+        );
         let query = doc! { "address": address_bytes };
         let res = self
-            .accounts
+            .db
+            .collection::<Account>("accounts")
             .find_one(query, None)
             .await
-            .map_err(|err| DbError::Insert(err.kind.to_string()))?;
+            .map_err(|err| DbError::Read(err.kind.to_string()))?;
 
         Ok(res.map(|u| u.last_processed_signature))
     }
@@ -105,16 +102,23 @@ impl IndexerBackend for MongoDbClient {
             "set last processed signature: {:?} as {:?}",
             account, signature
         );
-        let address_bytes = Binary {
-            subtype: BinarySubtype::Generic,
-            bytes: account.to_bytes().to_vec(),
-        };
-        let signature_bytes = Binary {
-            subtype: BinarySubtype::Generic,
-            bytes: signature.as_ref().to_vec(),
-        };
+        let address_bytes = Bson::Array(
+            account
+                .to_bytes()
+                .iter()
+                .map(|d| Bson::Int32(*d as i32))
+                .collect(),
+        );
+        let signature_bytes = Bson::Array(
+            signature
+                .as_ref()
+                .iter()
+                .map(|d| Bson::Int32(*d as i32))
+                .collect(),
+        );
 
-        self.accounts
+        self.db
+            .collection::<Account>("accounts")
             .find_one_and_update(
                 doc! { "address": address_bytes },
                 doc! { "$set": { "last_processed_signature": signature_bytes } },
@@ -125,14 +129,16 @@ impl IndexerBackend for MongoDbClient {
             .map(|_res| ())
     }
     async fn insert_order_action_record(&self, record: OrderActionRecord) -> Result<(), DbError> {
-        self.order_action_records
+        self.db
+            .collection("order_action_records")
             .insert_one(record, None)
             .await
             .map_err(|err| DbError::Insert(err.kind.to_string()))
             .map(|_res| ())
     }
     async fn insert_order_record(&self, record: OrderRecord) -> Result<(), DbError> {
-        self.order_records
+        self.db
+            .collection("order_records")
             .insert_one(record, None)
             .await
             .map_err(|err| DbError::Insert(err.kind.to_string()))

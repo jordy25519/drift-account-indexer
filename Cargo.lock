@@ -1181,6 +1181,7 @@ dependencies = [
  "anchor-attribute-event",
  "anchor-lang",
  "async-trait",
+ "env_logger 0.9.3",
  "futures",
  "idl-gen",
  "log",
