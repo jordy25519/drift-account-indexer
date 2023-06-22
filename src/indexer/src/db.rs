@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use log::debug;
 use mongodb::{
     bson::{doc, Bson},
-    options::{CreateIndexOptions, FindOneAndUpdateOptions, IndexOptions},
-    Client, Database, IndexModel,
+    options::FindOneAndUpdateOptions,
+    Client, Database,
 };
 use serde::{Deserialize, Serialize};
 use solana_sdk::{pubkey::Pubkey, signature::Signature};
@@ -52,19 +52,6 @@ impl MongoDbClient {
     pub async fn new(conn_str: &str) -> Self {
         let client = Client::with_uri_str(conn_str).await.expect("db connect");
         let db = client.database(DB_DATABASE_NAME);
-
-        // index on 'Account.account' field
-        db.collection::<Account>("accounts")
-            .create_index(
-                IndexModel::builder()
-                    .keys(doc! {"address": 1})
-                    .options(IndexOptions::builder().unique(true).build())
-                    .build(),
-                CreateIndexOptions::default(),
-            )
-            .await
-            .expect("index created");
-
         Self { db, _inner: client }
     }
 }

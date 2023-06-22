@@ -7,7 +7,7 @@ services:
     image: indexer:latest
     container_name: indexer
     restart: always
-    entrypoint: indexer --accounts GontTwDeBduvbW85oHyC8A7GekuT8X1NkZHDDdUWWvsV --poll 10 --rpc https://rpc.helius.xyz/?api-key=9cdcda7b-ff1f-473c-9067-92f52b58e81a
+    entrypoint: indexer --accounts GontTwDeBduvbW85oHyC8A7GekuT8X1NkZHDDdUWWvsV,BxTExiVRt9EHe4b47ZDQLDGxee1hPexvkmaDFMLZTDvv --poll 10 --rpc https://rpc.helius.xyz/<API_KEY>
     environment:
       RUST_LOG: info
       INDEXER_DB_CONN_STR: mongodb://service:password@mongo:27017/drift
@@ -22,3 +22,4 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: drift

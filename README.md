@@ -30,3 +30,8 @@ $> indexer \
 ```console
 docker-compose up --build
 ```
+NB: if quickly hits rate limits on free RPC, try increasing `--poll` seconds, or use a 3rd party provider
+
+## Future work
+- db tuning needs some work (indexes, data model), test under more load
+- at some point subscribing to _N_ accounts is going to be less efficient than simply subscribing to all drift trades
