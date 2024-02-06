@@ -1,8 +1,7 @@
 //! Indexer types
 use std::{cell::OnceCell, str::FromStr};
 
-use anchor_attribute_event::event;
-use anchor_lang::{prelude::*, Discriminator};
+use anchor_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 use solana_rpc_client_api::client_error::Error;
 use solana_sdk::pubkey::Pubkey;
@@ -23,7 +22,8 @@ pub fn drift_pda() -> Pubkey {
 }
 
 // TODO: the onchain IDL may change, need to regen if so
-gen_idl_types!("../../res/drift-2.30.0-beta.1.json");
+declare_id!("dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH");
+gen_idl_types!("../../res/drift-2.58.0.json");
 
 #[derive(Debug)]
 pub enum IndexerError {

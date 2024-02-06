@@ -1772,7 +1772,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "syn 2.0.18",
+ "syn 1.0.109",
 ]
 
 [[package]]

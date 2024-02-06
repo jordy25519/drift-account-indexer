@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse_macro_input;
 
-/// generate program event types from given IDL json file
+/// generate program types from given IDL json file
 #[proc_macro]
 pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let path_str = parse_macro_input!(input as syn::LitStr);
@@ -15,10 +15,19 @@ pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let idl_json = std::fs::read_to_string(path).expect("file found");
     let idef: Idl = serde_json::from_str(idl_json.as_str()).expect("valid IDL");
 
-    let mut output = TokenStream::new();
+    let mut output = quote! {
+        use anchor_attribute_event::event;
+        use anchor_lang::{prelude::*, AccountDeserialize, Discriminator};
+    };
 
+    // TODO: namespace the types, modules, events for better discoverability/dx
     idef.types.iter().for_each(|e| {
         let type_struct = gen_type_struct(e);
+        output.extend(vec![type_struct]);
+    });
+
+    idef.accounts.iter().for_each(|x| {
+        let type_struct = gen_type_struct(x);
         output.extend(vec![type_struct]);
     });
 
@@ -27,7 +36,6 @@ pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     if let Some(events) = idef.events {
         events.iter().for_each(|event| {
             let event_name = syn::Ident::new(event.name.as_str(), Span::call_site());
-            // event_names.push(event_name);
             outer_event_types = quote! {
                 #outer_event_types
                 #event_name(#event_name),
@@ -54,6 +62,7 @@ pub fn gen_idl_types(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         .as_str(),
         Span::call_site(),
     );
+
     quote! {
         #output
 
@@ -113,9 +122,7 @@ fn gen_type_struct(type_def: &IdlTypeDefinition) -> TokenStream {
                             named.iter().map(field_to_token_stream).collect();
                         variant_ts = quote! {
                             #variant_ts
-
-                            #(#fields)*,
-
+                            #variant_name{#(#fields)*},
                         };
                     }
                     Some(EnumFields::Tuple(ref tuples)) => {
@@ -150,8 +157,10 @@ fn gen_type_struct(type_def: &IdlTypeDefinition) -> TokenStream {
         }
         IdlTypeDefinitionTy::Struct { ref fields } => {
             let fields: Vec<TokenStream> = fields.iter().map(field_to_token_stream).collect();
+            // TODO: #[account] for accounts only
             quote! {
-                #[derive(Clone, Debug, PartialEq, AnchorDeserialize, AnchorSerialize, Serialize, Deserialize)]
+                #[derive(Debug, PartialEq, Serialize, Deserialize)]
+                #[account]
                 pub struct #type_name  {
                     #(#fields)*
                 }
@@ -196,14 +205,15 @@ fn field_to_token_stream(f: &IdlField) -> TokenStream {
     let ty_str = idl_ty_to_rust_ty(&f.ty);
     let ty: syn::Type = syn::parse_str(ty_str.as_str()).unwrap();
 
-    // TODO: quick hack (should ignore all arrays > 32)
     // arrays with len > 32 do not implement important traits e.g PartialEq, Serialize, etc.
-    // in drift case the field is inconsequential 'padding' and can be safely ignored
-    if ty_str.as_str() == "[u8; 48]" {
-        TokenStream::new()
-    } else {
-        quote! {
-            #name: #ty,
+    // in solana programs this is typically inconsequential 'padding' and can be safely ignored from the struct
+    if let IdlType::Array(ty, size) = &f.ty {
+        if ty.as_ref() == &IdlType::U8 && *size > 32 {
+            return TokenStream::new();
         }
+    }
+
+    quote! {
+        #name: #ty,
     }
 }

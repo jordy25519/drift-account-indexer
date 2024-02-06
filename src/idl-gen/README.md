@@ -1,16 +1,18 @@
 # idl-gen
 
-Generate rust types from anchor IDL, intended for use by offchain services.
+Generate rust accounts/types/events from anchor IDL, intended for use by offchain services.
 For CPI see [anchor-gen](https://github.com/saber-hq/anchor-gen/)
 
 ```rust
-// import deps to enable ser/de
-use anchor_attribute_event::event;
+// required imports
 use anchor_lang::prelude::*;
-use serde::{Serialize, Deserialize};
-// + any other external type defs (macro will not resolve)
+use serde::{Deserialize, Serialize};
+
+// import any external type defs (macro does not resolve)
 use solana_sdk::pubkey::Pubkey;
 
+// declare program ID
+declare_id!("dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH");
 gen_idl_types!("../rel/path/to/idl.json");
 ```
 
@@ -26,4 +28,4 @@ let event = DriftEvent::from_discriminant(disc, data);
 
 ## TODO:
 - [] field names are camelCase, should become snake_case
-- [] generate everything into a `mod` to help with namespacing
+- [] generate types into `mods` to help with namespacing
